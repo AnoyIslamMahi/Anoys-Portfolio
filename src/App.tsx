@@ -520,26 +520,31 @@ const Contact = () => {
           <h2 className="text-5xl font-display mb-4">Begin conversation</h2>
           <p className="text-gray-400 mb-12">If you have any questions, feel free to write.</p>
           
-          <form className="space-y-6">
+          <form action="https://formsubmit.co/lazerlit.me@gmail.com" method="POST" className="space-y-6">
+            {/* Honeypot for spam protection */}
+            <input type="text" name="_honey" style={{ display: 'none' }} />
+            {/* Disable captcha for smoother UX */}
+            <input type="hidden" name="_captcha" value="false" />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Full name</label>
-                <input type="text" className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors" placeholder="Francis Drake" />
+                <input type="text" name="name" required className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors" placeholder="Francis Drake" />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Email</label>
-                <input type="email" className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors" placeholder="f.drake@gm" />
+                <input type="email" name="email" required className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors" placeholder="f.drake@gm" />
               </div>
             </div>
             <div>
               <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Topic</label>
-              <input type="text" className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors" placeholder="Type your topic" />
+              <input type="text" name="_subject" required className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors" placeholder="Type your topic" />
             </div>
             <div>
               <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">How can we help you?</label>
-              <textarea rows={4} className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors resize-none" placeholder="Space for your message" />
+              <textarea name="message" required rows={4} className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors resize-none" placeholder="Space for your message" />
             </div>
-            <button className="bg-primary text-white px-10 py-4 rounded-xl font-bold uppercase tracking-widest w-full md:w-auto">Submit message</button>
+            <button type="submit" className="bg-primary text-white px-10 py-4 rounded-xl font-bold uppercase tracking-widest w-full md:w-auto hover:bg-orange-600 transition-colors">Submit message</button>
           </form>
         </div>
 
