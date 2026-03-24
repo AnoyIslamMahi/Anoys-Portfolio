@@ -20,10 +20,12 @@ import {
   X,
   Check
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import ServiceDetail from "./pages/ServiceDetail";
 import PortfolioDetail from "./pages/PortfolioDetail";
+import { LiveChat } from "./components/LiveChat";
+import { AdminChat } from "./components/AdminChat";
 
 // --- Components ---
 
@@ -181,7 +183,7 @@ const Hero = () => {
               Let's Connect
             </motion.a>
             <motion.a 
-              href="#work"
+              href="#portfolio"
               whileHover={{ scale: 1.05 }}
               className="glass px-8 py-4 rounded-full font-bold uppercase tracking-widest w-full sm:w-auto text-center inline-block"
             >
@@ -213,10 +215,10 @@ const Hero = () => {
 
 const About = () => {
   const stats = [
-    { label: "Graphics Design", value: "6+ yrs" },
-    { label: "Motion Graphics", value: "6+ yrs" },
-    { label: "Video Editing", value: "6+ yrs" },
-    { label: "Projects Done", value: "100s+" },
+    { label: "Graphics Design", value: "7 years" },
+    { label: "Motion Graphics", value: "2 Years" },
+    { label: "Video Editing", value: "7 Years" },
+    { label: "Projects Done", value: "250+" },
   ];
 
   return (
@@ -261,7 +263,7 @@ const About = () => {
             </div>
             
             <div className="flex items-baseline gap-4 mb-8">
-              <span className="text-8xl font-display text-primary">6+</span>
+              <span className="text-8xl font-display text-primary">7+</span>
               <span className="text-xl text-gray-400 uppercase tracking-widest">Years Experience</span>
             </div>
 
@@ -269,7 +271,7 @@ const About = () => {
               Creative Graphics Designer, Motion Designer, and Video Editor.
             </h2>
             <p className="text-gray-400 text-lg leading-relaxed mb-8">
-              Over 6 years of experience in branding, animation, streaming graphics, and promotional video production. Skilled in designing banners, logos, overlays, and product animation for clients worldwide. Successfully completed hundreds of projects with consistent 5-star feedback.
+              Over 7 years of experience in branding, animation, streaming graphics, and promotional video production. Skilled in designing banners, logos, overlays, and product animation for clients worldwide. Successfully completed hundreds of projects with consistent 5-star feedback.
             </p>
           </div>
         </motion.div>
@@ -364,8 +366,6 @@ const TechStack = () => {
     { name: "After Effects", icon: <Video size={24} /> },
     { name: "Photoshop", icon: <Palette size={24} /> },
     { name: "Illustrator", icon: <Layers size={24} /> },
-    { name: "Premiere Pro", icon: <Video size={24} /> },
-    { name: "Figma", icon: <Layout size={24} /> },
   ];
 
   return (
@@ -710,7 +710,7 @@ const Footer = () => {
             <div className="text-2xl font-display tracking-wider text-primary uppercase">Anoy Islam Mahi</div>
           </div>
           <p className="text-gray-500 text-sm leading-relaxed">
-            Creative Graphics Designer, Motion Designer, and Video Editor with over 6 years of experience in branding and animation.
+            Creative Graphics Designer, Motion Designer, and Video Editor with over 7 years of experience in branding and animation.
           </p>
           <div className="flex gap-4 mt-6">
             <a href="https://www.linkedin.com/in/anoy-islam-mahi/" target="_blank" rel="noreferrer"><Linkedin className="text-gray-500 hover:text-primary cursor-pointer transition-colors" size={20} /></a>
@@ -830,20 +830,28 @@ export default function App() {
     <BrowserRouter>
       <ScrollManager />
       <div className="bg-dark min-h-screen">
-        <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/service/:id" element={<ServiceDetail />} />
-          <Route path="/portfolio/:id" element={<PortfolioDetail />} />
+          <Route path="/admin/chat" element={<AdminChat />} />
+          <Route path="*" element={
+            <>
+              <Navbar />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/service/:id" element={<ServiceDetail />} />
+                <Route path="/portfolio/:id" element={<PortfolioDetail />} />
+              </Routes>
+              <Footer />
+              <LiveChat />
+              
+              {/* Background Branding Text */}
+              <div className="fixed bottom-0 left-0 w-full overflow-hidden pointer-events-none z-0 opacity-[0.02]">
+                <h1 className="text-[30vw] font-display leading-none whitespace-nowrap translate-y-1/2">
+                  ANOY ISLAM MAHI
+                </h1>
+              </div>
+            </>
+          } />
         </Routes>
-        <Footer />
-        
-        {/* Background Branding Text */}
-        <div className="fixed bottom-0 left-0 w-full overflow-hidden pointer-events-none z-0 opacity-[0.02]">
-          <h1 className="text-[30vw] font-display leading-none whitespace-nowrap translate-y-1/2">
-            ANOY ISLAM MAHI
-          </h1>
-        </div>
       </div>
     </BrowserRouter>
   );

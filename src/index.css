@@ -30,7 +30,7 @@
 }
 
 .logo-color {
-  filter: brightness(0) saturate(100%) invert(21%) sepia(94%) saturate(4422%) hue-rotate(352deg) brightness(91%) contrast(92%);
+  filter: brightness(0) invert(1);
 }
 
 .text-gradient-red {
