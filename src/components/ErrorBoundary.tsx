@@ -1,7 +1,7 @@
-import * as React from "react";
+import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface State {
@@ -9,8 +9,8 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<any, any> {
-  constructor(props: any) {
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = {
       hasError: false,
@@ -18,15 +18,15 @@ export class ErrorBoundary extends React.Component<any, any> {
     };
   }
 
-  public static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-dark flex items-center justify-center p-6 text-center">

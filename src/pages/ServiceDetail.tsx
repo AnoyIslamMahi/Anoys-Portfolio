@@ -53,7 +53,6 @@ const ServiceDetail = () => {
                     loop
                     muted
                     playsInline
-                    referrerPolicy="no-referrer"
                     onMouseOver={(e) => {
                       e.currentTarget.play().catch(() => {});
                     }}
@@ -122,7 +121,6 @@ const ServiceDetail = () => {
                         controls
                         autoPlay
                         playsInline
-                        referrerPolicy="no-referrer"
                       />
                     ) : (
                       <img 

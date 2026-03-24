@@ -8,6 +8,9 @@ import {
   Monitor, 
   Cpu, 
   PenTool,
+  Code,
+  Smartphone,
+  Globe,
   ChevronRight,
   Github,
   Twitter,
@@ -369,7 +372,16 @@ const TechStack = () => {
     { name: "After Effects", icon: <Video size={24} /> },
     { name: "Photoshop", icon: <Palette size={24} /> },
     { name: "Illustrator", icon: <Layers size={24} /> },
+    { name: "Premiere Pro", icon: <Video size={24} /> },
+    { name: "Figma", icon: <Layout size={24} /> },
+    { name: "InDesign", icon: <PenTool size={24} /> },
+    { name: "Web Design", icon: <Globe size={24} /> },
+    { name: "Mobile UI", icon: <Smartphone size={24} /> },
+    { name: "Development", icon: <Code size={24} /> },
   ];
+
+  // Duplicate the tools array multiple times to ensure a seamless loop
+  const marqueeItems = [...tools, ...tools, ...tools, ...tools];
 
   return (
     <section className="py-20 overflow-hidden bg-dark border-y border-white/5">
@@ -377,15 +389,20 @@ const TechStack = () => {
         <h2 className="text-4xl font-display tracking-widest">MY TECH STACK</h2>
       </div>
       
-      <div className="flex gap-12 animate-marquee whitespace-nowrap">
-        {[...tools, ...tools].map((tool, i) => (
-          <div key={i} className="flex items-center gap-4 glass px-8 py-4 rounded-2xl hover:border-primary/50 transition-colors group">
-            <div className="text-primary group-hover:scale-110 transition-transform">
-              {tool.icon}
+      <div className="relative flex overflow-hidden">
+        <div className="flex gap-12 animate-marquee whitespace-nowrap py-4 w-max">
+          {marqueeItems.map((tool, i) => (
+            <div 
+              key={i} 
+              className="flex items-center gap-4 glass px-8 py-4 rounded-2xl hover:border-primary/50 transition-colors group flex-shrink-0"
+            >
+              <div className="text-primary group-hover:scale-110 transition-transform">
+                {tool.icon}
+              </div>
+              <span className="text-xl font-bold tracking-tight">{tool.name}</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">{tool.name}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );
