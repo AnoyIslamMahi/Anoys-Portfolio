@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "Chat": {
+      "title": "Chat",
+      "description": "A chat session between a visitor and the admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The visitor's unique ID." },
+        "lastMessage": { "type": "string", "description": "The text of the last message sent." },
+        "lastTimestamp": { "type": "string", "format": "date-time", "description": "The timestamp of the last message." },
+        "unreadAdmin": { "type": "integer", "description": "Number of unread messages for the admin." },
+        "status": { "type": "string", "enum": ["online", "offline"], "description": "The online status of the visitor." }
+      },
+      "required": ["id", "lastTimestamp"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message in a chat session.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The content of the message." },
+        "sender": { "type": "string", "enum": ["visitor", "admin"], "description": "Who sent the message." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." }
+      },
+      "required": ["text", "sender", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/chats/{chatId}": {
+      "schema": "Chat",
+      "description": "Collection of chat sessions."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Subcollection of messages for a specific chat session."
+    }
+  }
+}

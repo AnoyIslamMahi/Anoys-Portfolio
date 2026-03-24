@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: chats
+    // Document ID: {chatId} (visitorId)
+    // Fields:
+    //   - id: string (required) - visitorId
+    //   - lastMessage: string (optional) - text of last message
+    //   - lastTimestamp: timestamp (required) - time of last message
+    //   - unreadAdmin: number (optional) - count of unread messages for admin
+    //   - status: string (optional) - 'online' | 'offline'
+    //
+    // Collection: chats/{chatId}/messages
+    // Document ID: {messageId}
+    // Fields:
+    //   - text: string (required) - message content
+    //   - sender: string (required) - 'visitor' | 'admin'
+    //   - timestamp: timestamp (required) - time of message
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "lazerlit.me@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isOwner(chatId) {
+      return isAuthenticated() && request.auth.uid == chatId;
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['id', 'lastTimestamp']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.lastTimestamp is timestamp &&
+             (!('lastMessage' in data) || (data.lastMessage is string && data.lastMessage.size() < 5000)) &&
+             (!('unreadAdmin' in data) || (data.unreadAdmin is number && data.unreadAdmin >= 0)) &&
+             (!('status' in data) || (data.status in ['online', 'offline']));
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['text', 'sender', 'timestamp']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.sender in ['visitor', 'admin'] &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /chats/{chatId} {
+      allow read: if isOwner(chatId) || isAdmin();
+      allow create: if isAuthenticated() && isValidChat(request.resource.data) && isOwner(chatId);
+      allow update: if isAuthenticated() && isValidChat(request.resource.data) && (isOwner(chatId) || isAdmin());
+
+      match /messages/{messageId} {
+        allow read: if isOwner(chatId) || isAdmin();
+        allow create: if isAuthenticated() && isValidMessage(request.resource.data) && (isOwner(chatId) || isAdmin());
+        allow update: if false; // Messages are immutable
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

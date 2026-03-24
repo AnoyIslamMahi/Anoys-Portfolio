@@ -834,34 +834,38 @@ const Home = () => {
   );
 };
 
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <ScrollManager />
-      <div className="bg-dark min-h-screen">
-        <Routes>
-          <Route path="/admin/chat" element={<AdminChat />} />
-          <Route path="*" element={
-            <>
-              <Navbar />
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/service/:id" element={<ServiceDetail />} />
-                <Route path="/portfolio/:id" element={<PortfolioDetail />} />
-              </Routes>
-              <Footer />
-              <LiveChat />
-              
-              {/* Background Branding Text */}
-              <div className="fixed bottom-0 left-0 w-full overflow-hidden pointer-events-none z-0 opacity-[0.02]">
-                <h1 className="text-[30vw] font-display leading-none whitespace-nowrap translate-y-1/2">
-                  ANOY ISLAM MAHI
-                </h1>
-              </div>
-            </>
-          } />
-        </Routes>
-      </div>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ScrollManager />
+        <div className="bg-dark min-h-screen">
+          <Routes>
+            <Route path="/admin/chat" element={<AdminChat />} />
+            <Route path="*" element={
+              <>
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/service/:id" element={<ServiceDetail />} />
+                  <Route path="/portfolio/:id" element={<PortfolioDetail />} />
+                </Routes>
+                <Footer />
+                <LiveChat />
+                
+                {/* Background Branding Text */}
+                <div className="fixed bottom-0 left-0 w-full overflow-hidden pointer-events-none z-0 opacity-[0.02]">
+                  <h1 className="text-[30vw] font-display leading-none whitespace-nowrap translate-y-1/2">
+                    ANOY ISLAM MAHI
+                  </h1>
+                </div>
+              </>
+            } />
+          </Routes>
+        </div>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

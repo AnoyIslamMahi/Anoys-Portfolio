@@ -1,139 +1,161 @@
 import React, { useState, useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
-import { MessageCircle, Send, User, Bell } from "lucide-react";
+import { MessageCircle, Send, User, Bell, LogIn } from "lucide-react";
 import { motion } from "motion/react";
+import { auth, db } from "../firebase";
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  onAuthStateChanged,
+  signOut
+} from "firebase/auth";
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  serverTimestamp, 
+  doc, 
+  updateDoc,
+  addDoc,
+  setDoc
+} from "firebase/firestore";
 
 interface Message {
   id: string;
   text: string;
   sender: "visitor" | "admin";
-  timestamp: string;
+  timestamp: any;
 }
 
 interface ChatSession {
   id: string;
   messages: Message[];
   unreadAdmin: number;
+  lastMessage?: string;
+  lastTimestamp?: any;
+  status?: string;
 }
 
 export const AdminChat = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return sessionStorage.getItem("adminAuth") === "true";
-  });
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
+  const [user, setUser] = useState<any>(null);
   const [chats, setChats] = useState<Map<string, ChatSession>>(new Map());
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeMessages, setActiveMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const activeChatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    activeChatIdRef.current = activeChatId;
-  }, [activeChatId]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username === "lazeranoy" && password === "lazerchatanoy") {
-      setIsLoggedIn(true);
-      sessionStorage.setItem("adminAuth", "true");
-      setError("");
-    } else {
-      setError("Invalid credentials");
-    }
-  };
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!user || user.email !== "lazerlit.me@gmail.com") return;
 
-    const newSocket = io();
-    setSocket(newSocket);
+    // Track admin online status
+    const statusRef = doc(db, "status", "admin");
+    setDoc(statusRef, { online: true }, { merge: true });
 
-    newSocket.on("connect", () => {
-      newSocket.emit("join_admin");
-    });
-
-    newSocket.on("all_chats", (data: [string, ChatSession][]) => {
-      setChats(new Map(data));
-    });
-
-    newSocket.on("visitor_joined", ({ id }: { id: string }) => {
-      setChats((prev: Map<string, ChatSession>) => {
-        const next = new Map(prev);
-        if (!next.has(id)) {
-          next.set(id, { id, messages: [], unreadAdmin: 0 });
-        }
-        return next;
+    // Listen for all chats
+    const chatsRef = collection(db, "chats");
+    const q = query(chatsRef, orderBy("lastTimestamp", "desc"));
+    const unsubscribeChats = onSnapshot(q, (snapshot) => {
+      const newChats = new Map<string, ChatSession>();
+      snapshot.docs.forEach(doc => {
+        newChats.set(doc.id, { id: doc.id, ...doc.data(), messages: [] } as ChatSession);
       });
-    });
-
-    newSocket.on("new_message", ({ visitorId, message }: { visitorId: string, message: Message }) => {
-      setChats((prev: Map<string, ChatSession>) => {
-        const next = new Map(prev);
-        const chat = next.get(visitorId);
-        if (chat) {
-          const updatedChat = {
-            ...chat,
-            messages: [...chat.messages, message],
-            unreadAdmin: (activeChatIdRef.current !== visitorId && message.sender === "visitor") 
-              ? chat.unreadAdmin + 1 
-              : chat.unreadAdmin
-          };
-          next.set(visitorId, updatedChat);
-        }
-        return next;
-      });
-    });
-
-    newSocket.on("chat_updated", ({ visitorId, chat }: { visitorId: string, chat: ChatSession }) => {
-      setChats((prev: Map<string, ChatSession>) => {
-        const next = new Map(prev);
-        next.set(visitorId, { ...chat });
-        return next;
-      });
-    });
-
-    newSocket.on("visitor_left", ({ id }) => {
-      // Optional: mark visitor as offline
+      setChats(newChats);
     });
 
     return () => {
-      newSocket.disconnect();
+      unsubscribeChats();
+      updateDoc(statusRef, { online: false }).catch(console.error);
     };
-  }, [isLoggedIn]);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !activeChatId) {
+      setActiveMessages([]);
+      return;
+    }
+
+    const messagesRef = collection(db, "chats", activeChatId, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
+    const unsubscribeMessages = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Message[];
+      setActiveMessages(msgs);
+    });
+
+    return () => unsubscribeMessages();
+  }, [user, activeChatId]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [chats, activeChatId]);
+  }, [activeMessages]);
 
-  const handleSelectChat = (id: string) => {
-    setActiveChatId(id);
-    if (socket) {
-      socket.emit("mark_read", id);
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
     }
   };
 
-  const sendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || !socket || !activeChatId) return;
-
-    socket.emit("send_message", {
-      text: input,
-      sender: "admin",
-      to: activeChatId,
-    });
-
-    setInput("");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
-  const activeChat = activeChatId ? chats.get(activeChatId) : null;
+  const handleSelectChat = async (id: string) => {
+    setActiveChatId(id);
+    const chatRef = doc(db, "chats", id);
+    await updateDoc(chatRef, { unreadAdmin: 0 });
+  };
 
-  if (!isLoggedIn) {
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || !user || !activeChatId) return;
+
+    const text = input;
+    setInput("");
+
+    try {
+      const chatRef = doc(db, "chats", activeChatId);
+      const messagesRef = collection(db, "chats", activeChatId, "messages");
+
+      await addDoc(messagesRef, {
+        text,
+        sender: "admin",
+        timestamp: serverTimestamp()
+      });
+
+      await updateDoc(chatRef, {
+        lastMessage: text,
+        lastTimestamp: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
+
+  if (loading) {
+    return <div className="fixed inset-0 bg-dark flex items-center justify-center text-white">Loading...</div>;
+  }
+
+  if (!user || user.email !== "lazerlit.me@gmail.com") {
     return (
       <div className="fixed inset-0 z-[60] bg-dark flex items-center justify-center p-6">
         <motion.div 
@@ -146,47 +168,33 @@ export const AdminChat = () => {
               <Bell size={32} />
             </div>
             <h2 className="text-2xl font-display tracking-wider text-white uppercase">Admin Portal</h2>
-            <p className="text-gray-400 text-sm mt-2">Please sign in to access the chat dashboard</p>
+            <p className="text-gray-400 text-sm mt-2">
+              {user ? "Access Denied. Please use the admin account." : "Please sign in to access the chat dashboard"}
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 ml-1">Username</label>
-              <input 
-                type="text" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-dark border border-white/10 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-primary/50 transition-colors"
-                placeholder="Enter username"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 ml-1">Password</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-dark border border-white/10 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-primary/50 transition-colors"
-                placeholder="Enter password"
-                required
-              />
-            </div>
-            {error && (
-              <p className="text-primary text-xs font-bold text-center mt-2 uppercase tracking-tighter">{error}</p>
-            )}
+          <button 
+            onClick={handleGoogleLogin}
+            className="w-full bg-white text-black py-4 rounded-2xl font-bold uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors shadow-lg"
+          >
+            <LogIn size={20} />
+            Sign in with Google
+          </button>
+
+          {user && (
             <button 
-              type="submit"
-              className="w-full bg-primary text-white py-4 rounded-2xl font-bold uppercase tracking-widest mt-4 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+              onClick={handleLogout}
+              className="w-full mt-4 text-gray-500 hover:text-white transition-colors text-xs uppercase tracking-widest font-bold"
             >
-              Sign In
+              Sign Out
             </button>
-            <div className="text-center mt-6">
-              <a href="/" className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
-                Back to Website
-              </a>
-            </div>
-          </form>
+          )}
+
+          <div className="text-center mt-6">
+            <a href="/" className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
+              Back to Website
+            </a>
+          </div>
         </motion.div>
       </div>
     );
@@ -205,13 +213,7 @@ export const AdminChat = () => {
             <p className="text-xs text-gray-400">Manage live conversations</p>
           </div>
           <button 
-            onClick={() => {
-              setIsLoggedIn(false);
-              sessionStorage.removeItem("adminAuth");
-              setUsername("");
-              setPassword("");
-              setSocket(null);
-            }}
+            onClick={handleLogout}
             className="ml-auto text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors"
           >
             Logout
@@ -236,9 +238,7 @@ export const AdminChat = () => {
                 <div className="truncate">
                   <p className="text-sm font-medium text-white truncate">Visitor {chat.id.slice(0, 4)}</p>
                   <p className="text-xs text-gray-400 truncate">
-                    {chat.messages.length > 0
-                      ? chat.messages[chat.messages.length - 1].text
-                      : "New visitor"}
+                    {chat.lastMessage || "New visitor"}
                   </p>
                 </div>
               </div>
@@ -259,7 +259,7 @@ export const AdminChat = () => {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-2/3 md:h-full bg-dark/50">
-        {activeChat ? (
+        {activeChatId && chats.get(activeChatId) ? (
           <>
             {/* Header */}
             <div className="p-6 border-b border-white/10 bg-card flex items-center gap-3">
@@ -267,23 +267,23 @@ export const AdminChat = () => {
                 <User size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-white">Visitor {activeChat.id.slice(0, 4)}</h3>
-                <p className="text-xs text-green-400 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
-                  Online
+                <h3 className="font-bold text-white">Visitor {activeChatId.slice(0, 4)}</h3>
+                <p className={`text-xs flex items-center gap-1 ${chats.get(activeChatId)?.status === 'online' ? 'text-green-400' : 'text-gray-500'}`}>
+                  <span className={`w-2 h-2 rounded-full inline-block ${chats.get(activeChatId)?.status === 'online' ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+                  {chats.get(activeChatId)?.status === 'online' ? 'Online' : 'Offline'}
                 </p>
               </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-              {activeChat.messages.length === 0 ? (
+              {activeMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center space-y-2">
                   <MessageCircle size={48} className="opacity-20" />
                   <p>No messages yet.</p>
                 </div>
               ) : (
-                activeChat.messages.map((msg) => (
+                activeMessages.map((msg) => (
                   <div
                     key={msg.id}
                     className={`flex ${
@@ -299,10 +299,10 @@ export const AdminChat = () => {
                     >
                       <p className="text-sm">{msg.text}</p>
                       <span className="text-[10px] opacity-60 mt-2 block">
-                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                        {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
-                        })}
+                        }) : "..."}
                       </span>
                     </div>
                   </div>

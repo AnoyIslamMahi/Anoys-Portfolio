@@ -1,29 +1,38 @@
 import React, { useState, useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
 import { MessageCircle, X, Send, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { auth, db } from "../firebase";
+import { 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from "firebase/auth";
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  serverTimestamp, 
+  doc, 
+  setDoc, 
+  updateDoc,
+  increment,
+  getDoc
+} from "firebase/firestore";
 
 interface Message {
   id: string;
   text: string;
   sender: "visitor" | "admin";
-  timestamp: string;
+  timestamp: any;
 }
 
 export const LiveChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [isAdminOnline, setIsAdminOnline] = useState(false);
-  const [visitorId] = useState(() => {
-    let id = localStorage.getItem("chatVisitorId");
-    if (!id) {
-      id = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem("chatVisitorId", id);
-    }
-    return id;
-  });
+  const [user, setUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,33 +42,68 @@ export const LiveChat = () => {
   }, []);
 
   useEffect(() => {
-    // Connect to the same host
-    const newSocket = io();
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => {
-      newSocket.emit("join_visitor", { visitorId });
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        try {
+          const result = await signInAnonymously(auth);
+          setUser(result.user);
+        } catch (error) {
+          console.error("Error signing in anonymously:", error);
+        }
+      } else {
+        setUser(currentUser);
+      }
     });
 
-    newSocket.on("admin_status", (status: boolean) => {
-      setIsAdminOnline(status);
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Ensure chat document exists
+    const chatRef = doc(db, "chats", user.uid);
+    const initializeChat = async () => {
+      const chatDoc = await getDoc(chatRef);
+      if (!chatDoc.exists()) {
+        await setDoc(chatRef, {
+          id: user.uid,
+          lastTimestamp: serverTimestamp(),
+          unreadAdmin: 0,
+          status: 'online'
+        });
+      } else {
+        await updateDoc(chatRef, { status: 'online' });
+      }
+    };
+    initializeChat();
+
+    // Listen for messages
+    const messagesRef = collection(db, "chats", user.uid, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
+    const unsubscribeMessages = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Message[];
+      setMessages(msgs);
     });
 
-    newSocket.on("chat_history", (history: Message[]) => {
-      setMessages(history);
-    });
-
-    newSocket.on("new_message", (data: { message: Message }) => {
-      setMessages((prev) => [...prev, data.message]);
-      if (!isOpen && data.message.sender === "admin") {
-        // Optional: play sound or show notification badge
+    // Listen for admin status (optional: could be a global status doc)
+    // For now, let's assume admin status is tracked via a special doc
+    const statusRef = doc(db, "status", "admin");
+    const unsubscribeStatus = onSnapshot(statusRef, (doc) => {
+      if (doc.exists()) {
+        setIsAdminOnline(doc.data().online);
       }
     });
 
     return () => {
-      newSocket.disconnect();
+      unsubscribeMessages();
+      unsubscribeStatus();
+      updateDoc(chatRef, { status: 'offline' }).catch(console.error);
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -67,17 +111,39 @@ export const LiveChat = () => {
     }
   }, [messages, isOpen]);
 
-  const sendMessage = (e: React.FormEvent) => {
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !socket) return;
+    if (!input.trim() || !user) return;
 
-    socket.emit("send_message", {
-      text: input,
-      sender: "visitor",
-      visitorId
-    });
-
+    const text = input;
     setInput("");
+
+    try {
+      const chatRef = doc(db, "chats", user.uid);
+      const messagesRef = collection(db, "chats", user.uid, "messages");
+
+      await addDoc(messagesRef, {
+        text,
+        sender: "visitor",
+        timestamp: serverTimestamp()
+      });
+
+      await updateDoc(chatRef, {
+        lastMessage: text,
+        lastTimestamp: serverTimestamp(),
+        unreadAdmin: increment(1)
+      });
+
+      // Trigger email notification via API route
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, visitorId: user.uid })
+      }).catch(console.error);
+
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   return (
