@@ -132,11 +132,13 @@ export const LiveChat = () => {
         timestamp: serverTimestamp()
       });
 
-      await updateDoc(chatRef, {
+      await setDoc(chatRef, {
+        id: user.uid,
         lastMessage: text,
         lastTimestamp: serverTimestamp(),
-        unreadAdmin: increment(1)
-      });
+        unreadAdmin: increment(1),
+        status: "online"
+      }, { merge: true });
 
       // Trigger email notification via API route
       fetch('/api/notify', {
@@ -209,10 +211,13 @@ export const LiveChat = () => {
                     >
                       <p className="text-sm">{msg.text}</p>
                       <span className="text-[10px] opacity-60 mt-1 block">
-                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                        {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
-                        })}
+                        }) : msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }) : "..."}
                       </span>
                     </div>
                   </div>

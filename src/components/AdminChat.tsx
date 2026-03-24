@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MessageCircle, Send, User, Bell, LogIn } from "lucide-react";
+import { MessageCircle, Send, User, Bell, LogIn, LogOut, Search, ChevronLeft, Clock } from "lucide-react";
 import { motion } from "motion/react";
 import { auth, db } from "../firebase";
 import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
+  signInWithEmailAndPassword, 
   onAuthStateChanged,
   signOut
 } from "firebase/auth";
@@ -42,6 +41,9 @@ export const AdminChat = () => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [activeMessages, setActiveMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [email, setEmail] = useState("lazerlit.me@gmail.com");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -102,12 +104,14 @@ export const AdminChat = () => {
     }
   }, [activeMessages]);
 
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
     try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      setError(error.message || "Invalid credentials. Please try again.");
     }
   };
 
@@ -173,21 +177,53 @@ export const AdminChat = () => {
             </p>
           </div>
 
-          <button 
-            onClick={handleGoogleLogin}
-            className="w-full bg-white text-black py-4 rounded-2xl font-bold uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors shadow-lg"
-          >
-            <LogIn size={20} />
-            Sign in with Google
-          </button>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                placeholder="admin@example.com"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            {error && (
+              <p className="text-primary text-xs font-bold">{error}</p>
+            )}
+
+            <button 
+              type="submit"
+              className="w-full bg-primary text-white py-4 rounded-2xl font-bold uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-primary/90 transition-colors shadow-lg"
+            >
+              <LogIn size={20} />
+              Sign In
+            </button>
+          </form>
 
           {user && (
-            <button 
-              onClick={handleLogout}
-              className="w-full mt-4 text-gray-500 hover:text-white transition-colors text-xs uppercase tracking-widest font-bold"
-            >
-              Sign Out
-            </button>
+            <div className="mt-8 pt-8 border-t border-white/10 text-center">
+              <p className="text-gray-400 text-sm mb-4">Logged in as: {user.email}</p>
+              <button 
+                onClick={handleLogout}
+                className="text-primary text-xs font-bold uppercase tracking-widest hover:underline"
+              >
+                Sign Out
+              </button>
+            </div>
           )}
 
           <div className="text-center mt-6">
@@ -300,6 +336,9 @@ export const AdminChat = () => {
                       <p className="text-sm">{msg.text}</p>
                       <span className="text-[10px] opacity-60 mt-2 block">
                         {msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }) : msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         }) : "..."}
