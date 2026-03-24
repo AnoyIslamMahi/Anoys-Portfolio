@@ -61,35 +61,51 @@ async function startServer() {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("join_admin", () => {
+    socket.on("join_admin", async () => {
       socket.join("admin");
-      adminOnline = true;
-      adminSocketId = socket.id;
       console.log("Admin joined");
+      
       // Send all active chats to the admin
       socket.emit("all_chats", Array.from(activeChats.entries()));
+      
       // Broadcast admin status to all visitors
-      io.emit("admin_status", adminOnline);
+      const adminSockets = await io.in("admin").fetchSockets();
+      io.emit("admin_status", adminSockets.length > 0);
     });
 
-    socket.on("join_visitor", () => {
-      socket.join(`visitor_${socket.id}`);
-      if (!activeChats.has(socket.id)) {
-        activeChats.set(socket.id, {
-          id: socket.id,
+    socket.on("join_visitor", ({ visitorId }: { visitorId: string }) => {
+      socket.join(`visitor_${visitorId}`);
+      
+      let chat = activeChats.get(visitorId);
+      if (!chat) {
+        chat = {
+          id: visitorId,
           messages: [],
           unreadAdmin: 0,
-        });
+        };
+        activeChats.set(visitorId, chat);
       }
-      console.log("Visitor joined:", socket.id);
+      
+      console.log("Visitor joined:", visitorId);
+      
+      // Send current chat history to the visitor
+      socket.emit("chat_history", chat.messages);
+      
       // Send current admin status to the new visitor
-      socket.emit("admin_status", adminOnline);
-      // Notify admin about new visitor
-      io.to("admin").emit("visitor_joined", { id: socket.id });
+      io.in("admin").fetchSockets().then(sockets => {
+        socket.emit("admin_status", sockets.length > 0);
+      });
+      
+      // Notify admin about new/returning visitor
+      io.to("admin").emit("visitor_joined", { id: visitorId });
     });
 
     socket.on("send_message", (data) => {
-      const { text, sender, to } = data;
+      const { text, sender, to, visitorId: vid } = data;
+      const visitorId = sender === "visitor" ? vid : to;
+      
+      if (!visitorId) return;
+
       const message = {
         id: Date.now().toString(),
         text,
@@ -97,22 +113,25 @@ async function startServer() {
         timestamp: new Date().toISOString(),
       };
 
-      if (sender === "visitor") {
-        const chat = activeChats.get(socket.id);
-        if (chat) {
-          const isFirstMessage = chat.messages.length === 0;
-          
-          chat.messages.push(message);
+      const chat = activeChats.get(visitorId);
+      if (chat) {
+        const isFirstMessage = chat.messages.length === 0 && sender === "visitor";
+        
+        chat.messages.push(message);
+        if (sender === "visitor") {
           chat.unreadAdmin += 1;
-          activeChats.set(socket.id, chat);
-          
-          // Send to admin
-          io.to("admin").emit("new_message", { visitorId: socket.id, message });
-          // Send back to visitor
-          socket.emit("new_message", { message });
+        }
+        activeChats.set(visitorId, chat);
+        
+        // Send to all admin tabs
+        io.to("admin").emit("new_message", { visitorId, message });
+        
+        // Send to visitor (all their tabs/windows)
+        io.to(`visitor_${visitorId}`).emit("new_message", { message });
 
+        if (sender === "visitor") {
           // Send email notification
-          sendEmailNotification(text, socket.id);
+          sendEmailNotification(text, visitorId);
 
           // Automated reply on first message
           if (isFirstMessage) {
@@ -124,29 +143,18 @@ async function startServer() {
                 timestamp: new Date().toISOString(),
               };
               
-              const updatedChat = activeChats.get(socket.id);
+              const updatedChat = activeChats.get(visitorId);
               if (updatedChat) {
                 updatedChat.messages.push(autoReply);
-                activeChats.set(socket.id, updatedChat);
+                activeChats.set(visitorId, updatedChat);
                 
                 // Send auto-reply to visitor
-                io.to(`visitor_${socket.id}`).emit("new_message", { message: autoReply });
+                io.to(`visitor_${visitorId}`).emit("new_message", { message: autoReply });
                 // Update admin's view
-                io.to("admin").emit("new_message", { visitorId: socket.id, message: autoReply });
+                io.to("admin").emit("new_message", { visitorId, message: autoReply });
               }
             }, 1000);
           }
-        }
-      } else if (sender === "admin") {
-        const chat = activeChats.get(to);
-        if (chat) {
-          chat.messages.push(message);
-          activeChats.set(to, chat);
-          
-          // Send to visitor
-          io.to(`visitor_${to}`).emit("new_message", { message });
-          // Send back to admin
-          socket.emit("new_message", { visitorId: to, message });
         }
       }
     });
@@ -160,15 +168,13 @@ async function startServer() {
       }
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log("User disconnected:", socket.id);
-      if (socket.id === adminSocketId) {
-        adminOnline = false;
-        adminSocketId = null;
-        io.emit("admin_status", adminOnline);
-      } else {
-        io.to("admin").emit("visitor_left", { id: socket.id });
-      }
+      
+      const adminSockets = await io.in("admin").fetchSockets();
+      io.emit("admin_status", adminSockets.length > 0);
+      
+      io.to("admin").emit("visitor_left", { id: socket.id });
     });
   });
 

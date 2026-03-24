@@ -16,6 +16,14 @@ export const LiveChat = () => {
   const [input, setInput] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isAdminOnline, setIsAdminOnline] = useState(false);
+  const [visitorId] = useState(() => {
+    let id = localStorage.getItem("chatVisitorId");
+    if (!id) {
+      id = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("chatVisitorId", id);
+    }
+    return id;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,11 +38,15 @@ export const LiveChat = () => {
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      newSocket.emit("join_visitor");
+      newSocket.emit("join_visitor", { visitorId });
     });
 
     newSocket.on("admin_status", (status: boolean) => {
       setIsAdminOnline(status);
+    });
+
+    newSocket.on("chat_history", (history: Message[]) => {
+      setMessages(history);
     });
 
     newSocket.on("new_message", (data: { message: Message }) => {
@@ -62,6 +74,7 @@ export const LiveChat = () => {
     socket.emit("send_message", {
       text: input,
       sender: "visitor",
+      visitorId
     });
 
     setInput("");

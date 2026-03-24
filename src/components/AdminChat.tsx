@@ -17,13 +17,38 @@ interface ChatSession {
 }
 
 export const AdminChat = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return sessionStorage.getItem("adminAuth") === "true";
+  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
   const [chats, setChats] = useState<Map<string, ChatSession>>(new Map());
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeChatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === "lazeranoy" && password === "lazerchatanoy") {
+      setIsLoggedIn(true);
+      sessionStorage.setItem("adminAuth", "true");
+      setError("");
+    } else {
+      setError("Invalid credentials");
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
     const newSocket = io();
     setSocket(newSocket);
 
@@ -50,11 +75,14 @@ export const AdminChat = () => {
         const next = new Map(prev);
         const chat = next.get(visitorId);
         if (chat) {
-          chat.messages.push(message);
-          if (activeChatId !== visitorId && message.sender === "visitor") {
-            chat.unreadAdmin += 1;
-          }
-          next.set(visitorId, chat);
+          const updatedChat = {
+            ...chat,
+            messages: [...chat.messages, message],
+            unreadAdmin: (activeChatIdRef.current !== visitorId && message.sender === "visitor") 
+              ? chat.unreadAdmin + 1 
+              : chat.unreadAdmin
+          };
+          next.set(visitorId, updatedChat);
         }
         return next;
       });
@@ -63,7 +91,7 @@ export const AdminChat = () => {
     newSocket.on("chat_updated", ({ visitorId, chat }: { visitorId: string, chat: ChatSession }) => {
       setChats((prev: Map<string, ChatSession>) => {
         const next = new Map(prev);
-        next.set(visitorId, chat);
+        next.set(visitorId, { ...chat });
         return next;
       });
     });
@@ -75,7 +103,7 @@ export const AdminChat = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [activeChatId]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -105,6 +133,65 @@ export const AdminChat = () => {
 
   const activeChat = activeChatId ? chats.get(activeChatId) : null;
 
+  if (!isLoggedIn) {
+    return (
+      <div className="fixed inset-0 z-[60] bg-dark flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-card border border-white/10 p-8 rounded-3xl shadow-2xl"
+        >
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
+              <Bell size={32} />
+            </div>
+            <h2 className="text-2xl font-display tracking-wider text-white uppercase">Admin Portal</h2>
+            <p className="text-gray-400 text-sm mt-2">Please sign in to access the chat dashboard</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 ml-1">Username</label>
+              <input 
+                type="text" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full bg-dark border border-white/10 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                placeholder="Enter username"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 ml-1">Password</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-dark border border-white/10 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                placeholder="Enter password"
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-primary text-xs font-bold text-center mt-2 uppercase tracking-tighter">{error}</p>
+            )}
+            <button 
+              type="submit"
+              className="w-full bg-primary text-white py-4 rounded-2xl font-bold uppercase tracking-widest mt-4 hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+            >
+              Sign In
+            </button>
+            <div className="text-center mt-6">
+              <a href="/" className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors">
+                Back to Website
+              </a>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-dark flex flex-col md:flex-row">
       {/* Sidebar */}
@@ -117,6 +204,18 @@ export const AdminChat = () => {
             <h2 className="font-bold text-xl text-white">Admin Chat</h2>
             <p className="text-xs text-gray-400">Manage live conversations</p>
           </div>
+          <button 
+            onClick={() => {
+              setIsLoggedIn(false);
+              sessionStorage.removeItem("adminAuth");
+              setUsername("");
+              setPassword("");
+              setSocket(null);
+            }}
+            className="ml-auto text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors"
+          >
+            Logout
+          </button>
         </div>
         
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
