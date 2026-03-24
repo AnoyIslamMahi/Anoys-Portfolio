@@ -86,14 +86,17 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <motion.a 
-            href="#contact"
+          <motion.button 
+            onClick={(e) => {
+              e.preventDefault();
+              window.dispatchEvent(new CustomEvent('open-chat'));
+            }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="bg-primary px-6 py-2 rounded-full text-sm font-bold uppercase tracking-tighter inline-block"
           >
-            Let's Talk
-          </motion.a>
+            Let's Chat
+          </motion.button>
         </div>
 
         {/* Mobile Toggle */}
@@ -781,12 +784,18 @@ const ScrollManager = () => {
       const savedScroll = sessionStorage.getItem("homeScroll");
       if (savedScroll && !location.hash) {
         const scrollY = parseInt(savedScroll, 10);
-        window.scrollTo(0, scrollY);
-        setTimeout(() => window.scrollTo(0, scrollY), 50);
-        setTimeout(() => window.scrollTo(0, scrollY), 200);
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+        setTimeout(() => window.scrollTo({ top: scrollY, behavior: 'instant' }), 50);
+        setTimeout(() => window.scrollTo({ top: scrollY, behavior: 'instant' }), 200);
+      } else if (location.hash) {
+        // Let the browser handle hash scrolling, but we can ensure it's smooth
+        const element = document.getElementById(location.hash.slice(1));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     } else {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [location.pathname, location.hash]);
 

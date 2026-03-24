@@ -3,6 +3,44 @@ import { createServer as createViteServer } from "vite";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import path from "path";
+import nodemailer from "nodemailer";
+
+// Configure nodemailer
+// Note: To actually send emails, you need to provide real SMTP credentials in your environment variables.
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_USER || "lazerlit.me@gmail.com",
+    pass: process.env.SMTP_PASS || "your-app-password",
+  },
+});
+
+async function sendEmailNotification(text: string, visitorId: string) {
+  try {
+    if (!process.env.SMTP_PASS) {
+      console.log("Email not sent: SMTP_PASS environment variable is not set.");
+      return;
+    }
+    await transporter.sendMail({
+      from: process.env.SMTP_USER || "lazerlit.me@gmail.com",
+      to: "lazerlit.me@gmail.com",
+      subject: `New Live Chat Message from Visitor ${visitorId.slice(0, 4)}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">New Chat Message</h2>
+          <p style="color: #666; font-size: 14px;"><strong>Visitor ID:</strong> ${visitorId}</p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; color: #333; font-size: 16px; line-height: 1.5;">${text}</p>
+          </div>
+          <p style="color: #999; font-size: 12px; text-align: center;">You can reply to this visitor from your <a href="${process.env.APP_URL || 'http://localhost:3000'}/admin/chat">Admin Dashboard</a>.</p>
+        </div>
+      `,
+    });
+    console.log("Email notification sent.");
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -16,17 +54,22 @@ async function startServer() {
   const PORT = 3000;
 
   // Store active chats in memory
-  // In a real app, you'd use a database like Redis or Postgres
   const activeChats = new Map();
+  let adminOnline = false;
+  let adminSocketId: string | null = null;
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
     socket.on("join_admin", () => {
       socket.join("admin");
+      adminOnline = true;
+      adminSocketId = socket.id;
       console.log("Admin joined");
       // Send all active chats to the admin
       socket.emit("all_chats", Array.from(activeChats.entries()));
+      // Broadcast admin status to all visitors
+      io.emit("admin_status", adminOnline);
     });
 
     socket.on("join_visitor", () => {
@@ -39,6 +82,8 @@ async function startServer() {
         });
       }
       console.log("Visitor joined:", socket.id);
+      // Send current admin status to the new visitor
+      socket.emit("admin_status", adminOnline);
       // Notify admin about new visitor
       io.to("admin").emit("visitor_joined", { id: socket.id });
     });
@@ -55,6 +100,8 @@ async function startServer() {
       if (sender === "visitor") {
         const chat = activeChats.get(socket.id);
         if (chat) {
+          const isFirstMessage = chat.messages.length === 0;
+          
           chat.messages.push(message);
           chat.unreadAdmin += 1;
           activeChats.set(socket.id, chat);
@@ -63,6 +110,32 @@ async function startServer() {
           io.to("admin").emit("new_message", { visitorId: socket.id, message });
           // Send back to visitor
           socket.emit("new_message", { message });
+
+          // Send email notification
+          sendEmailNotification(text, socket.id);
+
+          // Automated reply on first message
+          if (isFirstMessage) {
+            setTimeout(() => {
+              const autoReply = {
+                id: (Date.now() + 1).toString(),
+                text: "Thanks for reaching out! I will reply as soon as I'm available.",
+                sender: "admin",
+                timestamp: new Date().toISOString(),
+              };
+              
+              const updatedChat = activeChats.get(socket.id);
+              if (updatedChat) {
+                updatedChat.messages.push(autoReply);
+                activeChats.set(socket.id, updatedChat);
+                
+                // Send auto-reply to visitor
+                io.to(`visitor_${socket.id}`).emit("new_message", { message: autoReply });
+                // Update admin's view
+                io.to("admin").emit("new_message", { visitorId: socket.id, message: autoReply });
+              }
+            }, 1000);
+          }
         }
       } else if (sender === "admin") {
         const chat = activeChats.get(to);
@@ -89,9 +162,13 @@ async function startServer() {
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
-      // We don't delete the chat immediately so admin can still read history
-      // But we could notify admin that visitor left
-      io.to("admin").emit("visitor_left", { id: socket.id });
+      if (socket.id === adminSocketId) {
+        adminOnline = false;
+        adminSocketId = null;
+        io.emit("admin_status", adminOnline);
+      } else {
+        io.to("admin").emit("visitor_left", { id: socket.id });
+      }
     });
   });
 

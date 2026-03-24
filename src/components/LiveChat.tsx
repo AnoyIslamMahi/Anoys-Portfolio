@@ -15,7 +15,14 @@ export const LiveChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [isAdminOnline, setIsAdminOnline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOpenChat = () => setIsOpen(true);
+    window.addEventListener('open-chat', handleOpenChat);
+    return () => window.removeEventListener('open-chat', handleOpenChat);
+  }, []);
 
   useEffect(() => {
     // Connect to the same host
@@ -24,6 +31,10 @@ export const LiveChat = () => {
 
     newSocket.on("connect", () => {
       newSocket.emit("join_visitor");
+    });
+
+    newSocket.on("admin_status", (status: boolean) => {
+      setIsAdminOnline(status);
     });
 
     newSocket.on("new_message", (data: { message: Message }) => {
@@ -70,12 +81,17 @@ export const LiveChat = () => {
             {/* Header */}
             <div className="bg-dark p-4 border-b border-white/10 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                  <User size={20} />
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                    <User size={20} />
+                  </div>
+                  <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-dark ${isAdminOnline ? 'bg-green-500' : 'bg-red-500'}`}></span>
                 </div>
                 <div>
                   <h3 className="font-bold text-white">Live Chat</h3>
-                  <p className="text-xs text-gray-400">We typically reply in minutes</p>
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                    {isAdminOnline ? 'Online - Ready to chat' : "Offline - We'll reply soon"}
+                  </p>
                 </div>
               </div>
               <button
