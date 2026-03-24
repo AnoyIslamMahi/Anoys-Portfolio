@@ -17,7 +17,8 @@ import {
   Phone,
   MapPin,
   Menu,
-  X
+  X,
+  Check
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
@@ -83,13 +84,14 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
-          <motion.button 
+          <motion.a 
+            href="#contact"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-primary px-6 py-2 rounded-full text-sm font-bold uppercase tracking-tighter"
+            className="bg-primary px-6 py-2 rounded-full text-sm font-bold uppercase tracking-tighter inline-block"
           >
             Let's Talk
-          </motion.button>
+          </motion.a>
         </div>
 
         {/* Mobile Toggle */}
@@ -171,18 +173,20 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <motion.button 
+            <motion.a 
+              href="#contact"
               whileHover={{ scale: 1.05 }}
-              className="bg-primary text-white px-8 py-4 rounded-full font-bold uppercase tracking-widest w-full sm:w-auto"
+              className="bg-primary text-white px-8 py-4 rounded-full font-bold uppercase tracking-widest w-full sm:w-auto text-center inline-block"
             >
               Let's Connect
-            </motion.button>
-            <motion.button 
+            </motion.a>
+            <motion.a 
+              href="#work"
               whileHover={{ scale: 1.05 }}
-              className="glass px-8 py-4 rounded-full font-bold uppercase tracking-widest w-full sm:w-auto"
+              className="glass px-8 py-4 rounded-full font-bold uppercase tracking-widest w-full sm:w-auto text-center inline-block"
             >
               View Portfolio
-            </motion.button>
+            </motion.a>
           </div>
         </motion.div>
       </div>
@@ -408,7 +412,7 @@ const Process = () => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex justify-between items-center mb-16">
           <h2 className="text-6xl font-display">HOW I DO IT</h2>
-          <button className="glass px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest">Let's Connect</button>
+          <a href="#contact" className="glass px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest inline-block">Let's Connect</a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -513,14 +517,49 @@ const Portfolio = () => {
 };
 
 const Contact = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch("https://formsubmit.co/ajax/lazerlit.me@gmail.com", {
+        method: "POST",
+        body: formData,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        setShowPopup(true);
+        form.reset();
+      } else {
+        alert("Something went wrong. Please try again.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <section id="contact" className="py-24 px-6 max-w-7xl mx-auto">
+    <section id="contact" className="py-24 px-6 max-w-7xl mx-auto relative">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div>
           <h2 className="text-5xl font-display mb-4">Begin conversation</h2>
           <p className="text-gray-400 mb-12">If you have any questions, feel free to write.</p>
           
-          <form action="https://formsubmit.co/lazerlit.me@gmail.com" method="POST" className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Honeypot for spam protection */}
             <input type="text" name="_honey" style={{ display: 'none' }} />
             {/* Disable captcha for smoother UX */}
@@ -544,7 +583,17 @@ const Contact = () => {
               <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">How can we help you?</label>
               <textarea name="message" required rows={4} className="w-full bg-card border border-white/10 rounded-xl px-4 py-3 focus:border-primary outline-none transition-colors resize-none" placeholder="Space for your message" />
             </div>
-            <button type="submit" className="bg-primary text-white px-10 py-4 rounded-xl font-bold uppercase tracking-widest w-full md:w-auto hover:bg-orange-600 transition-colors">Submit message</button>
+            <button 
+              type="submit" 
+              disabled={isSubmitting || isSubmitted}
+              className={`px-10 py-4 rounded-xl font-bold uppercase tracking-widest w-full md:w-auto transition-colors ${
+                isSubmitted 
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                  : 'bg-primary text-white hover:bg-orange-600'
+              }`}
+            >
+              {isSubmitting ? 'Sending...' : isSubmitted ? 'Submitted' : 'Submit message'}
+            </button>
           </form>
         </div>
 
@@ -580,6 +629,31 @@ const Contact = () => {
           </div>
         </div>
       </div>
+
+      {/* Success Popup Modal */}
+      {showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card border border-white/10 p-8 rounded-3xl max-w-md w-full text-center relative shadow-2xl"
+          >
+            <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check size={32} />
+            </div>
+            <h3 className="text-3xl font-display mb-4">Message Sent!</h3>
+            <p className="text-gray-400 mb-8">
+              Thanks for reaching out! I've received your message and will get back to you as soon as possible.
+            </p>
+            <button 
+              onClick={() => setShowPopup(false)}
+              className="bg-white text-primary px-8 py-3 rounded-full font-bold uppercase tracking-widest w-full hover:bg-gray-100 transition-colors"
+            >
+              Close
+            </button>
+          </motion.div>
+        </div>
+      )}
     </section>
   );
 };
@@ -598,7 +672,7 @@ const CTA = () => {
             Join hundreds of clients who are creating beautiful visual experiences every day.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <button className="bg-white text-primary px-10 py-4 rounded-full font-bold uppercase tracking-widest hover:bg-gray-100 transition-colors">Start Project</button>
+            <a href="#contact" className="bg-white text-primary px-10 py-4 rounded-full font-bold uppercase tracking-widest hover:bg-gray-100 transition-colors inline-block text-center">Start Project</a>
             <a href="tel:01605957812" className="glass border-white/40 px-10 py-4 rounded-full font-bold uppercase tracking-widest">Call Now: 01605957812</a>
           </div>
         </div>
