@@ -47,8 +47,12 @@ export const LiveChat = () => {
         try {
           const result = await signInAnonymously(auth);
           setUser(result.user);
-        } catch (error) {
-          console.error("Error signing in anonymously:", error);
+        } catch (error: any) {
+          if (error.code === 'auth/admin-restricted-operation') {
+            console.error("Firebase Anonymous Auth is disabled. Please enable it in the Firebase Console (Authentication > Sign-in method).");
+          } else {
+            console.error("Error signing in anonymously:", error);
+          }
         }
       } else {
         setUser(currentUser);
