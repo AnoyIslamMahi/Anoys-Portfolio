@@ -26,11 +26,17 @@ async function startServer() {
 
     async function sendEmailNotification(text: string, visitorId: string) {
       try {
-        if (!transporter || !process.env.SMTP_PASS) {
-          console.log("Email not sent: SMTP_PASS environment variable is not set or transporter failed to initialize.");
+        if (!process.env.SMTP_PASS) {
+          console.warn("Email notification skipped: SMTP_PASS environment variable is not set.");
           return;
         }
-        await transporter.sendMail({
+
+        if (!transporter) {
+          console.error("Email notification failed: Transporter not initialized.");
+          return;
+        }
+
+        const mailOptions = {
           from: `"Live Chat" <${process.env.SMTP_USER || "lazerlit.me@gmail.com"}>`,
           to: "lazerlit.me@gmail.com",
           subject: `New Live Chat Message from Visitor ${visitorId.slice(0, 4)}`,
@@ -44,10 +50,12 @@ async function startServer() {
               <p style="color: #999; font-size: 12px; text-align: center;">You can reply to this visitor from your <a href="${process.env.APP_URL || 'http://localhost:3000'}/admin/chat">Admin Dashboard</a>.</p>
             </div>
           `,
-        });
-        console.log("Email notification sent.");
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log("Email notification sent successfully:", info.messageId);
       } catch (error) {
-        console.error("Error sending email:", error);
+        console.error("Error sending email notification:", error);
       }
     }
 
