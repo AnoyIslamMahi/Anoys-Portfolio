@@ -39,12 +39,25 @@ export const serviceWorks: ServiceWorks = {
       {
         id: "g2",
         title: "Equinox Logo",
-        description: "Logo for a E-sports Brand",
+        description: "Logo for a Esports Brand",
         type: "video",
         url: "https://i.imgur.com/zTPjeab.mp4",
         additionalContent: [
+          { type: 'text', content: 'Logo Details' },
+          { type: 'image', content: 'https://i.imgur.com/TAmvyKU.png' },
           { type: 'text', content: 'Banner to represent the logo.' },
           { type: 'image', content: 'https://i.imgur.com/P8BAiLf.png' }
+        ]
+      },
+      {
+        id: "g3",
+        title: "7R Esports Logo",
+        description: "Logo for a Esports Brand",
+        type: "image",
+        url: "https://i.imgur.com/SDyFpc9.png",
+        additionalContent: [
+          { type: 'text', content: 'Banner to represent the logo.' },
+          { type: 'image', content: 'https://i.imgur.com/dvGWBRL.png' }
         ]
       }
     ]
