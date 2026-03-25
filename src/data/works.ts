@@ -109,6 +109,13 @@ export const serviceWorks: ServiceWorks = {
       },
       {
         id: "v2",
+        title: "Hand Gesture Product Promotion",
+        description: "Promotional Video for highlighting product's features.",
+        type: "video",
+        url: "https://i.imgur.com/IhT035U.mp4"
+      },
+      {
+        id: "v3",
         title: "Website Promotion Commercial for Hood Gear",
         description: "Commercial to promote Hood Gear",
         type: "video",
