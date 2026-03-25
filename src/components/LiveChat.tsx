@@ -161,8 +161,9 @@ export const LiveChat = () => {
 
       // Trigger AI Response
       if (isAiEnabled) {
+        const currentHistory = messages.map(m => ({ role: m.sender, text: m.text }));
         setTimeout(async () => {
-          const aiText = await getAIResponse(text, messages.map(m => ({ role: m.sender, text: m.text })));
+          const aiText = await getAIResponse(text, currentHistory);
           if (aiText) {
             await addDoc(messagesRef, {
               text: aiText,

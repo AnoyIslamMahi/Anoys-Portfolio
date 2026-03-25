@@ -24,18 +24,24 @@ export const getAIResponse = async (message: string, history: { role: string, te
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
+      console.error("GEMINI_API_KEY is missing from environment");
       throw new Error("GEMINI_API_KEY is missing");
     }
 
     const ai = new GoogleGenAI({ apiKey });
     
+    // Filter history to avoid duplicates and ensure correct format
+    const formattedHistory = history
+      .filter(h => h.text && h.text.trim())
+      .map(h => ({ 
+        role: h.role === 'visitor' ? 'user' : 'model', 
+        parts: [{ text: h.text }] 
+      }));
+
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview", // Using the recommended model
       contents: [
-        ...history.map(h => ({ 
-          role: h.role === 'visitor' ? 'user' : 'model', 
-          parts: [{ text: h.text }] 
-        })),
+        ...formattedHistory,
         { role: 'user', parts: [{ text: message }] }
       ],
       config: {
