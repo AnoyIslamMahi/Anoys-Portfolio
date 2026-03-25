@@ -102,17 +102,17 @@ export const serviceWorks: ServiceWorks = {
     works: [
       {
         id: "v1",
-        title: "Commercial Promo",
-        description: "A fast-paced commercial for a lifestyle brand.",
+        title: "Money In Yo Pocket Commercial",
+        description: "A fast-paced commercial for promoting a event.",
         type: "video",
-        url: "https://assets.mixkit.co/videos/preview/mixkit-man-editing-a-video-on-his-computer-42415-large.mp4"
+        url: "https://i.imgur.com/VjCUynz.mp4"
       },
       {
         id: "v2",
-        title: "Social Media Reel",
-        description: "Engaging short-form content optimized for Instagram and TikTok.",
+        title: "Website Promotion Commercial for Hood Gear",
+        description: "Commercial to promote Hood Gear",
         type: "video",
-        url: "https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-man-editing-video-on-a-smartphone-42416-large.mp4"
+        url: "https://i.imgur.com/PU4uGKt.mp4"
       }
     ]
   },
