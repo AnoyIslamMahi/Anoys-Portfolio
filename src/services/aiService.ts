@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 const SYSTEM_INSTRUCTION = `
 You are an AI assistant for Lazerlit, a creative studio specializing in high-quality design and animation services.
 Your goal is to provide helpful, professional, and friendly responses to visitors on the website's live chat.
@@ -24,16 +22,26 @@ Guidelines:
 
 export const getAIResponse = async (message: string, history: { role: string, text: string }[] = []) => {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is missing");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: [
-        ...history.map(h => ({ role: h.role === 'visitor' ? 'user' : 'model', parts: [{ text: h.text }] })),
+        ...history.map(h => ({ 
+          role: h.role === 'visitor' ? 'user' : 'model', 
+          parts: [{ text: h.text }] 
+        })),
         { role: 'user', parts: [{ text: message }] }
       ],
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,
-        maxOutputTokens: 200,
+        maxOutputTokens: 400,
       },
     });
 
