@@ -46,6 +46,7 @@ export const AdminChat = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,6 +64,13 @@ export const AdminChat = () => {
     const statusRef = doc(db, "status", "admin");
     setDoc(statusRef, { online: true }, { merge: true });
 
+    // Listen for AI status
+    const unsubscribeAiStatus = onSnapshot(statusRef, (doc) => {
+      if (doc.exists()) {
+        setAiEnabled(doc.data().aiEnabled !== false);
+      }
+    });
+
     // Listen for all chats
     const chatsRef = collection(db, "chats");
     const q = query(chatsRef, orderBy("lastTimestamp", "desc"));
@@ -76,6 +84,7 @@ export const AdminChat = () => {
 
     return () => {
       unsubscribeChats();
+      unsubscribeAiStatus();
       updateDoc(statusRef, { online: false }).catch(console.error);
     };
   }, [user]);
@@ -154,6 +163,11 @@ export const AdminChat = () => {
     } catch (error) {
       console.error("Error sending message:", error);
     }
+  };
+
+  const toggleAi = async () => {
+    const statusRef = doc(db, "status", "admin");
+    await updateDoc(statusRef, { aiEnabled: !aiEnabled });
   };
 
   if (loading) {
@@ -254,6 +268,20 @@ export const AdminChat = () => {
             className="ml-auto text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors"
           >
             Logout
+          </button>
+        </div>
+
+        <div className="p-4 border-b border-white/10">
+          <button 
+            onClick={toggleAi}
+            className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+              aiEnabled 
+                ? "bg-green-500/20 text-green-400 border border-green-500/50" 
+                : "bg-white/5 text-gray-400 border border-white/10"
+            }`}
+          >
+            <div className={`w-2 h-2 rounded-full ${aiEnabled ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`}></div>
+            AI Assistant: {aiEnabled ? 'Active' : 'Disabled'}
           </button>
         </div>
         

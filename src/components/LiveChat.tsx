@@ -19,6 +19,7 @@ import {
   increment,
   getDoc
 } from "firebase/firestore";
+import { getAIResponse } from "../services/aiService";
 
 interface Message {
   id: string;
@@ -36,6 +37,7 @@ export const LiveChat = () => {
   const [visitorName, setVisitorName] = useState("");
   const [hasName, setHasName] = useState(false);
   const [isSubmittingName, setIsSubmittingName] = useState(false);
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -107,6 +109,7 @@ export const LiveChat = () => {
     const unsubscribeStatus = onSnapshot(statusRef, (doc) => {
       if (doc.exists()) {
         setIsAdminOnline(doc.data().online);
+        setIsAiEnabled(doc.data().aiEnabled !== false);
       }
     });
 
@@ -155,6 +158,26 @@ export const LiveChat = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, visitorId: user.uid })
       }).catch(console.error);
+
+      // Trigger AI Response
+      if (isAiEnabled) {
+        setTimeout(async () => {
+          const aiText = await getAIResponse(text, messages.map(m => ({ role: m.sender, text: m.text })));
+          if (aiText) {
+            await addDoc(messagesRef, {
+              text: aiText,
+              sender: "admin",
+              timestamp: serverTimestamp()
+            });
+
+            await updateDoc(chatRef, {
+              lastMessage: aiText,
+              lastTimestamp: serverTimestamp(),
+              unreadAdmin: 0 
+            });
+          }
+        }, 2000);
+      }
 
     } catch (error) {
       console.error("Error sending message:", error);
