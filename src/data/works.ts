@@ -5,7 +5,7 @@ export interface Work {
   type: 'image' | 'video';
   url: string;
   additionalContent?: {
-    type: 'text' | 'image';
+    type: 'text' | 'image' | 'video';
     content: string;
   }[];
 }
@@ -129,10 +129,21 @@ export const serviceWorks: ServiceWorks = {
     works: [
       {
         id: "s1",
-        title: "Esports Overlay Pack",
-        description: "Complete set of overlays including alerts, panels, and screens.",
-        type: "image",
-        url: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2070&auto=format&fit=crop"
+        title: "Mental Lagging Streaming Overlay",
+        description: "Full streaming package for Mental Lagging streamer.",
+        type: "video",
+        url: "https://i.imgur.com/cwo4toN.mp4",
+        additionalContent: [
+          { type: 'text', content: 'Stinger for transition' },
+          { type: 'video', content: 'https://i.imgur.com/rGCfoaK.mp4' },
+          { type: 'text', content: 'Starting Soon Overlay.' },
+          { type: 'video', content: 'https://i.imgur.com/8Y9ffiH.mp4' },
+          { type: 'text', content: 'Be Right Back Overlay.' },
+          { type: 'video', content: 'https://i.imgur.com/yXTVvlQ.mp4' },
+          { type: 'text', content: 'Ending Soon Overlay..' },
+          { type: 'video', content: 'https://i.imgur.com/SjeaieJ.mp4' },
+          
+        ]
       },
       {
         id: "s2",

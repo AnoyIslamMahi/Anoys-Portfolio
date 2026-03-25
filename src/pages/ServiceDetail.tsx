@@ -142,6 +142,22 @@ const ServiceDetail = () => {
                           <div key={idx}>
                             {item.type === 'text' ? (
                               <p className="text-lg text-gray-300 leading-relaxed">{item.content}</p>
+                            ) : item.type === 'video' ? (
+                              <div className="rounded-2xl overflow-hidden border border-white/5 bg-black">
+                                <video 
+                                  src={item.content} 
+                                  className="w-full h-auto"
+                                  loop
+                                  muted
+                                  playsInline
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.play().catch(() => {});
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.pause();
+                                  }}
+                                />
+                              </div>
                             ) : (
                               <div className="rounded-2xl overflow-hidden border border-white/5">
                                 <img 
