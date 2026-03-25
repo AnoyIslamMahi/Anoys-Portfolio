@@ -22,24 +22,34 @@ Guidelines:
 
 export const getAIResponse = async (message: string, history: { role: string, text: string }[] = []) => {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("GEMINI_API_KEY is missing from environment");
+    let apiKey = process.env.GEMINI_API_KEY;
+    
+    // Fallback for different environment setups
+    if (!apiKey || apiKey === "undefined") {
+      apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    }
+
+    if (!apiKey || apiKey === "undefined") {
+      console.error("GEMINI_API_KEY is missing or undefined");
       throw new Error("GEMINI_API_KEY is missing");
     }
 
+    console.log("API Key present:", !!apiKey);
+    console.log("Attempting AI call with model: gemini-3-flash-preview");
     const ai = new GoogleGenAI({ apiKey });
     
-    // Filter history to avoid duplicates and ensure correct format
     const formattedHistory = history
+      .slice(-10)
       .filter(h => h.text && h.text.trim())
       .map(h => ({ 
         role: h.role === 'visitor' ? 'user' : 'model', 
         parts: [{ text: h.text }] 
       }));
 
+    console.log("Formatted History:", JSON.stringify(formattedHistory));
+
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", // Using the recommended model
+      model: "gemini-3-flash-preview",
       contents: [
         ...formattedHistory,
         { role: 'user', parts: [{ text: message }] }
@@ -47,13 +57,16 @@ export const getAIResponse = async (message: string, history: { role: string, te
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,
-        maxOutputTokens: 400,
+        maxOutputTokens: 500,
       },
     });
 
     return response.text;
-  } catch (error) {
-    console.error("Error getting AI response:", error);
+  } catch (error: any) {
+    console.error("Detailed AI Error:", error);
+    if (error.message) console.error("Error Message:", error.message);
+    if (error.stack) console.error("Error Stack:", error.stack);
+    
     return "I'm sorry, I'm having a bit of trouble connecting right now. A human admin will be with you shortly!";
   }
 };
