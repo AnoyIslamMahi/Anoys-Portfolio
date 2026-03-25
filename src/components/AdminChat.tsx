@@ -33,6 +33,7 @@ interface ChatSession {
   lastMessage?: string;
   lastTimestamp?: any;
   status?: string;
+  visitorName?: string;
 }
 
 export const AdminChat = () => {
@@ -272,7 +273,9 @@ export const AdminChat = () => {
                   <User size={16} />
                 </div>
                 <div className="truncate">
-                  <p className="text-sm font-medium text-white truncate">Visitor {chat.id.slice(0, 4)}</p>
+                  <p className="text-sm font-medium text-white truncate">
+                    {chat.visitorName || `Visitor ${chat.id.slice(0, 4)}`}
+                  </p>
                   <p className="text-xs text-gray-400 truncate">
                     {chat.lastMessage || "New visitor"}
                   </p>
@@ -303,7 +306,9 @@ export const AdminChat = () => {
                 <User size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-white">Visitor {activeChatId.slice(0, 4)}</h3>
+                <h3 className="font-bold text-white">
+                  {chats.get(activeChatId)?.visitorName || `Visitor ${activeChatId.slice(0, 4)}`}
+                </h3>
                 <p className={`text-xs flex items-center gap-1 ${chats.get(activeChatId)?.status === 'online' ? 'text-green-400' : 'text-gray-500'}`}>
                   <span className={`w-2 h-2 rounded-full inline-block ${chats.get(activeChatId)?.status === 'online' ? 'bg-green-400' : 'bg-gray-500'}`}></span>
                   {chats.get(activeChatId)?.status === 'online' ? 'Online' : 'Offline'}

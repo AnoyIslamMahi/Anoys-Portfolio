@@ -33,6 +33,9 @@ export const LiveChat = () => {
   const [input, setInput] = useState("");
   const [isAdminOnline, setIsAdminOnline] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [visitorName, setVisitorName] = useState("");
+  const [hasName, setHasName] = useState(false);
+  const [isSubmittingName, setIsSubmittingName] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,6 +80,11 @@ export const LiveChat = () => {
           status: 'online'
         });
       } else {
+        const data = chatDoc.data();
+        if (data?.visitorName) {
+          setVisitorName(data.visitorName);
+          setHasName(true);
+        }
         await updateDoc(chatRef, { status: 'online' });
       }
     };
@@ -117,7 +125,7 @@ export const LiveChat = () => {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !user) return;
+    if (!input.trim() || !user || !hasName) return;
 
     const text = input;
     setInput("");
@@ -137,7 +145,8 @@ export const LiveChat = () => {
         lastMessage: text,
         lastTimestamp: serverTimestamp(),
         unreadAdmin: increment(1),
-        status: "online"
+        status: "online",
+        visitorName: visitorName
       }, { merge: true });
 
       // Trigger email notification via API route
@@ -149,6 +158,25 @@ export const LiveChat = () => {
 
     } catch (error) {
       console.error("Error sending message:", error);
+    }
+  };
+
+  const handleNameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visitorName.trim() || !user) return;
+
+    setIsSubmittingName(true);
+    try {
+      const chatRef = doc(db, "chats", user.uid);
+      await setDoc(chatRef, {
+        visitorName: visitorName.trim(),
+        lastTimestamp: serverTimestamp()
+      }, { merge: true });
+      setHasName(true);
+    } catch (error) {
+      console.error("Error saving name:", error);
+    } finally {
+      setIsSubmittingName(false);
     }
   };
 
@@ -189,7 +217,32 @@ export const LiveChat = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-dark/50">
-              {messages.length === 0 ? (
+              {!hasName ? (
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4">
+                    <User size={32} />
+                  </div>
+                  <h4 className="text-white font-bold mb-2">Welcome!</h4>
+                  <p className="text-sm text-gray-400 mb-6">Please enter your name to start chatting with us.</p>
+                  <form onSubmit={handleNameSubmit} className="w-full space-y-3">
+                    <input
+                      type="text"
+                      value={visitorName}
+                      onChange={(e) => setVisitorName(e.target.value)}
+                      placeholder="Your Name"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={!visitorName.trim() || isSubmittingName}
+                      className="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {isSubmittingName ? "Joining..." : "Start Chat"}
+                    </button>
+                  </form>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center space-y-2">
                   <MessageCircle size={32} className="opacity-50" />
                   <p className="text-sm">Send us a message and we'll get back to you shortly.</p>
