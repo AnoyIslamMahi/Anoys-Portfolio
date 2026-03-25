@@ -24,18 +24,28 @@ export const serviceWorks: ServiceWorks = {
     description: "A collection of my best logo designs and graphic branding projects.",
     works: [
       {
-        id: "g1",
-        title: "Modern Tech Logo",
-        description: "A minimalist logo for a cutting-edge technology startup.",
+        id: "m2",
+        title: "John Wick Thumbnail",
+        description: "This is a thumbnail for my 1v1 Duel Map in Fortnite creative",
         type: "image",
-        url: "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=2071&auto=format&fit=crop"
+        url: "https://i.imgur.com/y4HYaPD.jpeg",
+        additionalContent: [
+          { type: 'text', content: 'Profile version' },
+          { type: 'image', content: 'https://i.imgur.com/QIJN4Ru.jpeg' },
+          { type: 'text', content: 'Wide Version for Wallpaper' },
+          { type: 'image', content: 'https://i.imgur.com/cZmNg3X.jpeg' },
+        ]
       },
       {
         id: "g2",
-        title: "Brand Identity System",
-        description: "Full visual identity including color palette and typography.",
-        type: "image",
-        url: "https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?q=80&w=2070&auto=format&fit=crop"
+        title: "Equinox Logo",
+        description: "Logo for a E-sports Brand",
+        type: "video",
+        url: "https://i.imgur.com/zTPjeab.mp4",
+        additionalContent: [
+          { type: 'text', content: 'Banner to represent the logo.' },
+          { type: 'image', content: 'https://i.imgur.com/P8BAiLf.png' }
+        ]
       }
     ]
   },
